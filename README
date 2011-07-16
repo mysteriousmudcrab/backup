@@ -1,0 +1,1 @@
+A simple Ruby backup script utilising rsync to only backup files that have changed.  Edit config section of script to set backup destination and directories/files to backup.

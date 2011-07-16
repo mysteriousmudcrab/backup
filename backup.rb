@@ -87,8 +87,8 @@ end
 # end helper methods
 ################################################################################
 # main program...
+
 skipped_file_list = []
-puts `notify-send asdf`
 
 # output ruby version...
 info `ruby -v`

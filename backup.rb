@@ -1,6 +1,6 @@
-#!/usr/bin/ruby1.9.1
 #!/usr/bin/ruby
-
+# 
+#    git:  https://github.com/mysteriousmudcrab/backup
 #Purpose:  Simple rsync backup script that only backups modified files.
 # Author:  Andrew Perkins <andrew.perkins@cqumail.com>
 #Version:  0.0.3 (16/07/2011)
@@ -23,6 +23,7 @@
 # Config:
 debug_mode = false # if true, do not execute rsync command (show proposed cmd)
 
+# backup destination(s) for where files are backed up to.
 # use the first location that exists.
 # for example: first location is removable media, so if this is not present,
 # use the second, or third, etc. location.
@@ -88,6 +89,7 @@ end
 ################################################################################
 # main program...
 
+# skipped unreadable files/directories (subdirs or files in dir not checked) 
 skipped_file_list = []
 
 # output ruby version...
@@ -100,7 +102,7 @@ error "Error: Could not find rsync!",2 unless File.exists?(rsync_bin)
 destination_new = nil
 destination_list.each { |d|
   #info "d: #{d} (#{File.expand_path(d)})\n"
-  if File.exists? d then
+  if File.readable? d then
     destination_new = d
     info "Backing up to: '#{d}'\n"
     break
@@ -117,7 +119,6 @@ exclude_list.each {|ex|
 # build backup list...
 new_backup_list = ""
 backup_list.each {|d|
-  # silently ignore files that do not exists in backup list
   path = File.expand_path(d)
   if File.readable?(path) then
     new_backup_list = "#{new_backup_list} '#{path}'"
@@ -129,7 +130,7 @@ backup_list.each {|d|
 
 # build the command to run...
 cmd = "#{rsync_bin} #{rsync_args} #{new_exclude_list} #{new_backup_list} " \
-     "#{destination_new}"
+      "'#{destination_new}'"
 info "About to run: #{cmd}\n"
 
 #bail here if in debug mode

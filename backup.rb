@@ -16,15 +16,13 @@
 #          >8< 
 #          >9< 
 #
-# 
 ################################################################################
-
 class Backup
   attr_accessor :rsync_bin, :rsync_args, :backup_paths, :verbose, :verbose_args,
     :destination_paths, :exclude_list, :exclude_movies, :movie_types,
     :skipped_files
   
-  def initialize(verbose = true, rsync_bin = '/usr/bin/rsynck',
+  def initialize(verbose = true, rsync_bin = '/usr/bin/rsync',
       exclude_movies = false, backup_paths = [], destination_paths = [])
     @movie_types = %w(avi mov divx mp4 mpg wmv rm)
     @rsync_bin = rsync_bin
@@ -39,6 +37,9 @@ class Backup
     @skipped_files = []
     start if backup_paths and destination_paths
   end
+  
+  ##############################################################################
+  # general helper methods
   
   # output an error message and exit with an error code
   def error(msg="Congratulations, an unknown error occurred!")
@@ -69,31 +70,14 @@ class Backup
     response.downcase == 'y' || response == ''
   end
   
+################################################################################
+# rsync helpers
+  
   # does rsync exist?
   def rsync?
     result = File.readable?(get_rsync_bin)
     error "No rsync found!  (expecting #{get_rsync_bin})" unless result
     result
-  end
-  
-  # build backup list for rsync...
-  def get_backup_list
-    list = nil
-    @skipped_files = [] # don't want this to append every time method is called
-    @backup_paths.each do |back|
-      path = File.expand_path back
-      if File.readable? path then list = "#{list} '#{path}'"
-      else @skipped_files.push path
-      end
-    end
-    list
-  end
-  
-  def output_backup_list
-    info "Backup list:\n"
-    @backup_paths.each do |back| 
-      info " => #{File.expand_path back}\n"
-    end
   end
   
   # get rsync bin (attempt to locate if it does not exist or is not accessible)
@@ -113,18 +97,27 @@ class Backup
     args_str
   end
   
-  # search for the first destination backup media/location that exists and use
-  def get_destination_path
-    @destination_paths.each do |dest|
-      path = File.expand_path dest
-      return path if File.readable? path # found!
+  ##############################################################################
+  # helper methods for the list of files and directories to be backed up
+  
+  # build backup list for rsync...
+  def get_backup_list
+    list = nil
+    @skipped_files = [] # don't want this to append every time method is called
+    @backup_paths.each do |back|
+      path = File.expand_path back
+      if File.readable? path then list = "#{list} '#{path}'"
+      else @skipped_files.push path
+      end
     end
-    nil
+    list
   end
   
-  # is there a valid backup media path?
-  def backup_media_path?
-    get_destination_path != nil
+  def output_backup_list
+    info "Backup list:\n"
+    @backup_paths.each do |back| 
+      info " => #{File.expand_path back}\n"
+    end
   end
   
   # is there at least 1 directory or file to backup?
@@ -151,11 +144,31 @@ class Backup
     end
   end
   
+################################################################################
+# helper methods for the backup destination
+  
+  # search for the first backup destination
+  def get_destination_path
+    @destination_paths.each do |dest|
+      path = File.expand_path dest
+      return path if File.readable? path # found!
+    end
+    nil
+  end
+  
+  # is there a valid backup media path?
+  def backup_media_path?
+    get_destination_path != nil
+  end
+  
   # build the command to run
   def get_command
     "#{get_rsync_bin} #{get_rsync_args} #{get_exclude_list} " \
         "#{get_backup_list} '#{get_destination_path}'"
   end
+  
+################################################################################
+# main logic
   
   # start backup if everything is OK
   def start
@@ -177,9 +190,8 @@ class Backup
       until cmd.eof?
        puts cmd.readline
       end
-    end 
+    end
     rescue Exception => e
       warn "Backup terminated!\n"
-  end # do_backup
-end # class
-
+  end
+end

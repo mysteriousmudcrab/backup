@@ -5,7 +5,7 @@ require 'backup.rb'
 #                     rsync path,             backup paths,
 #               verbose?,               exclude movies?,        destinations
 #d = Backup.new true, '/usr/bin/rsync', true, ['~/Documents/'], ['/back up/']
-# (no need to call c.start if enough parameters specified)
+# (no need to call d.start if enough parameters specified)
 
 # Backup to cloud example:
 #c = Backup.new true, 'usr/bin/rsync', true, ['~/small/'], ['~/Ubuntu One/']

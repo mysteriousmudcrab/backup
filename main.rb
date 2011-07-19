@@ -8,7 +8,7 @@ require 'backup.rb'
 # (no need to call c.start if enough parameters specified)
 
 # Backup to cloud example:
-c = Backup.new true, 'usr/bin/rsync', true, ['~/small/'], ['~/Ubuntu One/']
+#c = Backup.new true, 'usr/bin/rsync', true, ['~/small/'], ['~/Ubuntu One/']
 
 b = Backup.new # use defaults
 
@@ -32,7 +32,7 @@ b.backup_paths = [
 b.destination_paths = [
   '/media/landfill/Andy/backup/',
   '/windows/backup/',
-  '/backup/',
+  '/back up/',
 ]
 
 # things we don't want backed up!
@@ -43,4 +43,4 @@ b.exclude_list = [
   '*/*cache*/*',
 ]
 
-#b.start # start the backup!
+b.start # start the backup!

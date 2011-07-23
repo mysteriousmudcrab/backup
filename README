@@ -1,6 +1,6 @@
 A simple Ruby backup class utilising rsync to only backup files that have changed.
 If a file is deleted locally, it will be also removed from the backup (see example run).
-A prompt appears before the backup starts, giving the user a chance to verify config.
+A prompt appears before the backup starts, giving the user a chance to verify config (only in verbose mode).
 A sample main.rb file is included for usage and instantiating the class.
 
 Multiple destinations can be specified:  the first available will be used.

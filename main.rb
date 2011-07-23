@@ -2,9 +2,9 @@
 require 'backup.rb'
 
 # Basic usage:
-#                     rsync path,             backup paths,
-#               verbose?,               exclude movies?,        destinations
 #d = Backup.new true, '/usr/bin/rsync', true, ['~/Documents/'], ['/back up/']
+#               verbose?,               exclude movies?,        destinations
+#                     rsync path,             backup paths,
 # (no need to call d.start if enough parameters specified)
 
 # Backup to cloud example:
@@ -18,6 +18,7 @@ b.backup_paths = [
   '~/Pictures/',
   '~/CQU/',
   '~/Desktop/',
+  '~/code/',
   '~/.mozilla/',
   '~/.gimp-2.6',
   '~/.mysql/',
@@ -28,11 +29,10 @@ b.backup_paths = [
 
 # where files and directories are backed up to.
 # if multiple locations specified, the first existing location will be used
-# (e.g., if 1st removable media is not present 2nd is used, etc.)
+# (e.g., if 1st removable media is not present, 2nd is used, etc.)
 b.destination_paths = [
   '/media/landfill/Andy/backup/',
   '/windows/backup/',
-  '/back up/',
 ]
 
 # things we don't want backed up!

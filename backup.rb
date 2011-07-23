@@ -11,7 +11,8 @@
 #          >3< does not yet list largest 3 directories as a statistic at end
 #          >4< does not attempt to locate rsync [fixed]
 #          >5< does not run in separate 'nice' (low priority) thread [fixed]
-#          >6< 
+#          >6< no FAT32 support, need to use --size-only if backing up to FAT32
+#              http://ubuntuforums.org/showthread.php?t=87038&page=2
 #          >7< 
 #          >8< 
 #          >9< 
@@ -22,15 +23,14 @@ class Backup
     :destination_paths, :exclude_list, :exclude_movies, :movie_types,
     :skipped_files
   
-  def initialize(verbose = true, rsync_bin = '/usr/bin/rsync',
+  def initialize(verbose = false, rsync_bin = '/usr/bin/rsync',
       exclude_movies = false, backup_paths = [], destination_paths = [])
     @movie_types = %w(avi mov divx mp4 mpg wmv rm)
     @rsync_bin = rsync_bin
     @rsync_args = %w(--archive --hard-links --delete --delete-excluded)
     @backup_paths = backup_paths
     @destination_paths = destination_paths
-    @verbose_args = %w(--verbose --stats --itemize-changes --progress 
-        --human-readable)
+    @verbose_args = %w(--verbose --progress --human-readable)
     @verbose = verbose
     @exclude_movies = exclude_movies
     @exclude_list = []
@@ -38,22 +38,22 @@ class Backup
     start if backup_paths and destination_paths
   end
   
-  ##############################################################################
-  # general helper methods
+################################################################################
+# general helper methods
   
   # output an error message and exit with an error code
   def error(msg="Congratulations, an unknown error occurred!")
-    puts "(EE) #{msg}" if @verbose
+    puts "(EE) #{msg}"
     exit
   end
   
   def warn(msg="")
-    puts "(WW) #{msg}" if @verbose
+    puts "(WW) #{msg}"
   end
   
   # output a message
   def info(msg="")
-    print "(II) #{msg}" if @verbose
+    print "(II) #{msg}"
   end
   
   # keep the method for exiting in one place
@@ -97,8 +97,13 @@ class Backup
     args_str
   end
   
-  ##############################################################################
-  # helper methods for the list of files and directories to be backed up
+  # build the command to run
+  def get_command
+    "#{get_rsync_bin} #{get_rsync_args} #{get_exclude_list} " \
+        "#{get_backup_list} '#{get_destination_path}'"
+  end
+################################################################################
+# helper methods for the list of files and directories to be backed up
   
   # build backup list for rsync...
   def get_backup_list
@@ -156,15 +161,9 @@ class Backup
     nil
   end
   
-  # is there a valid backup media path?
-  def backup_media_path?
+  # is there a valid backup destination path?
+  def destination_path?
     get_destination_path != nil
-  end
-  
-  # build the command to run
-  def get_command
-    "#{get_rsync_bin} #{get_rsync_args} #{get_exclude_list} " \
-        "#{get_backup_list} '#{get_destination_path}'"
   end
   
 ################################################################################
@@ -172,7 +171,7 @@ class Backup
   
   # start backup if everything is OK
   def start
-    return unless rsync? and backup_list? and backup_media_path?
+    return unless rsync? and backup_list? and destination_path?
     output_backup_list
     list_inaccessible
     info "Backing up to: '#{get_destination_path}'\n"
@@ -186,11 +185,19 @@ class Backup
   # perform backup
   def do_backup
     info "Proceeding with backup...\n"
+    start_time = Time.new
     IO.popen get_command do |cmd|
       until cmd.eof?
        puts cmd.readline
       end
     end
+    duration = Time.new.to_i - start_time.to_i
+    hrs = duration / 3600
+    min = (duration / 60) % 60
+    sec = duration % 60
+    duration_s = "%02d:%02d:%02d" % [hrs, min, sec]
+    puts ''
+    info "Time elapsed: #{duration_s}\n"
     rescue Exception => e
       warn "Backup terminated!\n"
   end

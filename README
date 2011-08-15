@@ -1,21 +1,30 @@
-A simple Ruby backup class utilising rsync to only backup files that have changed.
-If a file is deleted locally, it will be also removed from the backup (see example run).
-A prompt appears before the backup starts, giving the user a chance to verify config (if in verbose mode).
+A simple Ruby Backup class utilising rsync to only backup files that have 
+changed.  If a file is deleted locally, it will also be deleted from the backup.
+This Backup class performs a small test backup to determine if the backup fails.
+If it fails, the most likely reason is if the destination is FAT32/NTFS.
+In this case, compatibility mode is used to attempt the backup (meaning some
+file permissions, dates, etc. will not be preserved).
+
+A prompt appears before the backup starts, giving the user a chance to verify 
+config (if in verbose mode).
 A sample main.rb file is included for usage and instantiating the class.
 
 Multiple destinations can be specified:  the first available will be used.
-A brief check of each backup location is checked for accessibility.  If inaccessable, a warning will appear but backup will still proceed.
+A brief check of each backup location is checked for accessibility.
+If inaccessable, a warning will appear but backup will still proceed.
 
-The following output is a sample run.  The first backup destination is not available here, so the second is automatically selected (/windows/backup).
-Note that in this run the test backup fails because the destination is NTFS, activating compatibility mode - which does not preserve unix filesystem details such as permissions, dates, owner, group, etc.
+The following output is a sample run.
+The first backup destination is not available here, so the second is 
+automatically selected (/windows/backup).  Note that in this run the test 
+backup fails because the destination is NTFS, activating compatibility mode.
 
 mudcrab@mudcrab:~/backup$ ./main.rb 
-(II) Performing test backup... (this script)
+(II) Performing test backup... (this file)
 rsync: mkstemp "/windows/backup/.backup.rb.fKNKRW" failed: Operation not permitted (1)
 rsync error: some files/attrs were not transferred (see previous errors) (code 23) at main.c(1060) [sender=3.0.7]
 (WW) Implementing NTFS/FAT32 workaround...
 (II) Backing up to: '/windows/backup'
 (II) About to run command: /usr/bin/rsync  --delete --delete-excluded --verbose --progress --human-readable --devices --specials --links --size-only --recursive --verbose --progress --human-readable  --exclude '/.Trash-1000/' --exclude '/lost+found' --exclude '*/*Cache*/*' --exclude '*/*cache*/*'  '/home/mudcrab/Documents' '/home/mudcrab/Pictures' '/home/mudcrab/CQU' '/home/mudcrab/Desktop' '/home/mudcrab/code' '/home/mudcrab/.mozilla' '/home/mudcrab/.gimp-2.6' '/home/mudcrab/.mysql' '/windows/backup'
-(II) Proceed?  (<y>/n): 
-(II) Proceeding with backup...
+(II) Proceed? <y>/n: 
+(II) Proceeding with backup, please wait...
 (II) Backup complete!  Time elapsed: 01:07:50

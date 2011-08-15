@@ -1,7 +1,8 @@
 #!/usr/bin/ruby
 #Purpose:  Simple rsync backup script that only backups modified files.
+#          Works on unix and FAT32/NTFS filesystems using different rsync params
 # Author:  Andrew Perkins <andrew.perkins@cqumail.com>
-#Version:  0.1.0 (19/07/2011)
+#Version:  0.1.2 (15/08/2011)
 #    git:  https://github.com/mysteriousmudcrab/backup
 
 # Tested:  Ubuntu Linux (11.04 2.6.38-10-generic)
@@ -10,7 +11,7 @@
 #   Bugs:  >ö< backup paths cannot have spaces [fixed [again fixed]]
 #          >1< does not yet sync a separate batch of files to cloud [fixed]
 #          >2< does not yet accept command line arguments. [fixed]
-#          >3< does not yet list largest 3 dirs as a statistic at end [abandon]
+#          >3< does not yet list largest 3 dirs as a statistic at end [abandon?]
 #          >4< does not attempt to locate rsync [fixed]
 #          >5< does not run in separate 'nice' (low priority) thread [fixed]
 #          >6< no FAT32 support, need to use --size-only if backing up to FAT32
@@ -24,10 +25,10 @@
 ################################################################################
 class Backup
   attr_accessor :rsync_args, :backup_paths, :verbose, :verbose_args,
-    :backup_dests, :exclude, :skipped_files, :show_backup_list, 
-    :show_inaccessable, :prompt
-  
-  def initialize(verbose = true, backup_paths = [], backup_dests = [])
+    :backup_dests, :exclude, :show_backup_list, :show_inaccessable
+    @skipped_files = []
+    
+  def initialize(verbose = false, backup_paths = [], backup_dests = [])
     set_defaults
     @verbose = verbose
     @backup_paths = backup_paths
@@ -40,7 +41,8 @@ class Backup
     # preserving --hard-links is expensive http://linux.die.net/man/1/rsync
     @rsync_args = %w(--archive --delete --delete-excluded)
     @rsync_args_compat = %w(--devices --specials --links --size-only)
-    @rsync_args_compat.push "--recursive"
+    # http://ubuntuforums.org/showthread.php?t=820425
+    @rsync_args_compat.push "--modify-window=1", "--recursive"
     @verbose_args = %w(--verbose --progress --human-readable)
     @exclude = [ '/.Trash-1000/', '/lost+found', '*/*Cache*/*', '*/*cache*/*']
     @skipped_files = []
@@ -48,8 +50,7 @@ class Backup
     @show_inaccessable = true
   end
   
-################################################################################
-# general helper methods
+######################################################### GENERAL HELPER METHODS
   
   # output an error message and exit
   def error(msg="Congratulations, an unknown error occurred!")
@@ -82,10 +83,10 @@ class Backup
   end
 
   # read keyboard response, return true if response is y,Y or '' (return)
-  # return true if not verbose
+  # if not in verbose mode, return true
   def proceed?
     return true unless @verbose
-    print "(II) Proceed?  (<y>/n): "
+    print "(II) Proceed? <y>/n: "
     response = gets.chomp.gsub("\\n","")
     response.downcase == 'y' || response == ''
     rescue Exception => e
@@ -96,9 +97,7 @@ class Backup
   def class_name
     File.expand_path caller[0].split(":")[0]
   end
-  
-################################################################################
-# rsync helpers
+################################################################## RSYNC HELPERS
   
   # does rsync exist?
   def rsync?
@@ -128,18 +127,19 @@ class Backup
   def command
     "#{rsync} #{args} #{exclude_list} #{backup_list} '#{backup_dest}'"
   end
-  
-  # does a test backup succeed?
-  # test:  perform a small test backup (1 file - this backup script)
-  # return true if the source and destination file is the same file size
+#################################################################### BACKUP TEST
+  # TEST: does a small test backup (this file) succeed?  return true if the
+  # destination file modification time < 3 seconds ago,and the file sizes match,
+  # ensuring that it was not just a blank file created
   def test_succeeds?
-    info "Performing test backup... (this script)"
-    do_backup "#{rsync} #{args} #{class_name} #{backup_dest}", false
+    info "Performing test backup... (this file)"
+    do_backup "#{rsync} #{args} #{class_name} #{backup_dest}", false # quiet
     destination = File.join(backup_dest, File.basename(class_name))
-    destination.size == class_name.size
+    File.stat(destination).size == File.stat(class_name).size and
+        File.stat(destination).mtime < Time.now - 3
   end
-################################################################################
-# helper methods for the list of files and directories to be backed up
+########################################################### BACKUP FILES/FOLDERS
+# helper methods for the list of files and folders to be backed up
   
   # build backup list for rsync...
   def backup_list
@@ -154,11 +154,6 @@ class Backup
     list
   end
   
-  # is there at least 1 directory or file to backup?
-  def backup_list?
-    backup_list != nil
-  end
-  
   # build exclude list...
   def exclude_list
     result = nil
@@ -168,17 +163,15 @@ class Backup
     result
   end
   
-  # list inaccessible files or directories (but not subdirectories)
+  # list inaccessible files or folders (but not subfolders)
   def show_inaccessible
-    msg = "#{@skipped_files.size} files/directories inaccessible.  " + \
-        "Try running as root.  Inaccessable:"
-    warn msg
+    warn "#{@skipped_files.size} files/folders inaccessible " + \
+        "(try running as root):"
     @skipped_files.each do |sk|
       warn "  => #{sk}"
     end
   end
-  
-################################################################################
+############################################################# BACKUP DESTINATION
 # helper methods for the backup destination
   
   # search for the first backup destination
@@ -189,37 +182,26 @@ class Backup
     end
     nil
   end
-  
-  # is there a valid backup destination path?
-  def backup_dest?
-    backup_dest != nil
-  end
-  
 ########################################################################### MAIN
 # main logic
   
   # start backup if everything is OK
   def start
-    return unless rsync? and backup_list? and backup_dest?
-    # perform a small test backup (this file - FAT32 detection/workaround)
-    compatibility_fix unless test_succeeds?
+    error unless rsync? and backup_list != nil and backup_dest != nil
+    compatibility_fix unless test_succeeds? # compatibility fix if test fails
     output_list "Backup list:", @backup_paths if @show_backup_list
     show_inaccessible if @show_inaccessable
     info "Backing up to: '#{backup_dest}'"
     info "About to run command: #{command}"
-    return unless proceed?
+    exit unless proceed?
     info "Proceeding with backup, please wait..."
     start_time = Time.new
-    do_backup
-    duration = Time.new.to_i - start_time.to_i
-    hrs = duration / 3600
-    min = (duration / 60) % 60
-    sec = duration % 60
-    duration_s = "%02d:%02d:%02d" % [hrs, min, sec]
+    do_backup                                                     # START BACKUP
+    secs = Time.new.to_i - start_time.to_i
+    duration = "%02d:%02d:%02d" % [secs / 3600, (secs / 60) % 60, secs % 60]
     puts ''
-    info "Backup complete!  Time elapsed: #{duration_s}"
+    info "Backup complete!  Time elapsed: #{duration}"
   end
-  
 ######################################################################## PRIVATE
   private
   

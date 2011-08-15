@@ -180,6 +180,7 @@ class Backup
       path = File.expand_path dest
       return path if File.readable? path # found!
     end
+    error "No suitable backup media found!"
     nil
   end
 ########################################################################### MAIN
@@ -206,7 +207,7 @@ class Backup
   private
   
   # perform backup
-  def do_backup(args=command, verbose=@verbose)
+  def do_backup(args=command, verbose=false)
     IO.popen args do |cmd|
       until cmd.eof?
        buffer = cmd.readline
@@ -219,7 +220,7 @@ class Backup
   
   # remove --archive arg and replace with compatible args
   def compatibility_fix
-    warn "Test backup failed.  Implementing NTFS/FAT32 workaround..."
+    warn "Test backup failed.  Activating NTFS/FAT32 compatibility mode..."
     @rsync_args.delete "--archive"
     @rsync_args_compat.each do |c|
       @rsync_args.push c unless @rsync_args.include? c

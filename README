@@ -11,7 +11,7 @@ A sample main.rb file is included for usage and instantiating the class.
 
 Multiple destinations can be specified:  the first available will be used.
 A brief check of each backup location is checked for accessibility.
-If inaccessable, a warning will appear but backup will still proceed.
+If all destinations are inaccessable, the backup will abort.
 
 The following output is a sample run.
 The first backup destination is not available here, so the second is 

@@ -1,5 +1,6 @@
 A simple Ruby Backup class utilising rsync to only backup files that have 
 changed.  If a file is deleted locally, it will also be deleted from the backup.
+
 This Backup class performs a small test backup to determine if the backup fails.
 If it fails, the most likely reason is if the destination is FAT32/NTFS.
 In this case, compatibility mode is used to attempt the backup (meaning some
@@ -13,7 +14,19 @@ Multiple destinations can be specified:  the first available will be used.
 A brief check of each backup location is checked for accessibility.
 If all destinations are inaccessable, the backup will abort.
 
-The following output is a sample run.
+USAGE
+A sample main.rb file is included for usage instructions (having a separate file
+makes setting the script as a scheduled task (cron, etc) easier).
+
+Basically, you can either supply all required attributes: verbose (true or 
+false), an array of files/folders to backup, an array of folders representing 
+possible backup destinations), OR, instantiate the class, then invidually set
+attributes (examples in main.rb).
+
+You can also run a backup without the supplied main.rb, e.g.:
+ruby backup.rb false "~/Documents,~/code" "/back up/"
+
+SAMPLE OUTPUT
 The first backup destination is not available here, so the second is 
 automatically selected (/windows/backup).  Note that in this run the test 
 backup fails because the destination is NTFS, activating compatibility mode.

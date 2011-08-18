@@ -10,7 +10,7 @@
 # 
 #   Bugs:  >ö< backup paths cannot have spaces [fixed [again fixed]]
 #          >1< does not yet sync a separate batch of files to cloud [fixed]
-#          >2< does not yet accept command line arguments. [in progress]
+#          >2< does not yet accept command line arguments. [fixed]
 #          >3< does not yet list largest 3 dirs as a statistic at end [abandon?]
 #          >4< does not attempt to locate rsync [fixed]
 #          >5< does not run in separate 'nice' (low priority) thread [fixed]
@@ -24,12 +24,12 @@
 #
 ################################################################################
 class Backup
-  attr_accessor :rsync_args, :backup_paths, :backup_dests, :verbose,
-     :verbose_args, :exclude, :show_backup_list, :show_inaccessable
+  attr_accessor :rsync_args, :backup_paths, :verbose, :verbose_args,
+    :backup_dests, :exclude, :show_backup_list, :show_inaccessable
     @skipped_files = []
     
-  def initialize(verbose = true, backup_paths = [], backup_dests = [])
-    #puts "#{verbose} #{backup_paths.to_s} #{backup_dests.to_s}"
+  def initialize(verbose = false, backup_paths = [], backup_dests = [])
+    puts "#{verbose} #{backup_paths} #{backup_dests}"
     set_defaults
     @verbose = verbose
     @backup_paths = backup_paths
@@ -69,16 +69,18 @@ class Backup
   end
   
   # keep the method for exiting in one place
-  def exit(msg="")
+  def exit
     puts
-    warn "Backup aborted! #{msg}"
+    warn "Backup aborted!"
     Process.exit!
   end
   
   # output a list in a standard format
   def output_list(heading = "", list = [])
      info heading
-     list.each { |l| info "  => #{l}" }
+     list.each do |l|
+       info "  => #{l}"
+     end
   end
 
   # read keyboard response, return true if response is y,Y or '' (return)
@@ -113,11 +115,13 @@ class Backup
   
   # build rsync args string
   def args
-    arg = @rsync_args
-    arg.concat @verbose_args if @verbose
-    result = ""
-    arg.each { |a| result = "#{result} #{a}" }
-    result
+    result = @rsync_args
+    result.concat @verbose_args if @verbose
+    args_str = ""
+    result.each do |a|
+      args_str = "#{args_str} #{a}"
+    end
+    args_str
   end
   
   # build the command to run
@@ -130,7 +134,7 @@ class Backup
   # ensuring that it was not just a blank file created
   def test_succeeds?
     info "Performing test backup... (this file)"
-    do_backup "#{rsync} #{args} \'#{class_name}\' \'#{backup_dest}\'", false
+    do_backup "#{rsync} #{args} \'#{class_name}\' #{backup_dest}", false # quiet
     destination = File.join(backup_dest, File.basename(class_name))
     File.stat(destination).size == File.stat(class_name).size and
         File.stat(destination).mtime < Time.now - 3
@@ -154,7 +158,9 @@ class Backup
   # build exclude list...
   def exclude_list
     result = nil
-    @exclude.each { |ex| result = "#{result} --exclude '#{ex}'" }
+    @exclude.each do |ex|
+      result = "#{result} --exclude '#{ex}'"
+    end
     result
   end
   
@@ -162,7 +168,9 @@ class Backup
   def show_inaccessible
     warn "#{@skipped_files.size} files/folders inaccessible " + \
         "(try running as root):"
-    @skipped_files.each { |sk| warn "  => #{sk}" }
+    @skipped_files.each do |sk|
+      warn "  => #{sk}"
+    end
   end
 ############################################################# BACKUP DESTINATION
 # helper methods for the backup destination
@@ -171,6 +179,7 @@ class Backup
   def backup_dest
     @backup_dests.each do |dest|
       path = File.expand_path dest
+      puts path
       return path if File.readable? path # found!
     end
     nil
@@ -197,11 +206,12 @@ class Backup
     error "No rsync binary found!" unless rsync?
     error "No files or folders to backup!" if backup_list == nil
     error "No backup destination!" if backup_dest == nil
-    compatibility_fix unless test_succeeds?
+    compatibility_fix unless test_succeeds? # compatibility fix if test fails
     output_list "Backup list:", @backup_paths if @show_backup_list
     show_inaccessible if @show_inaccessable
+
   end
-  
+######################################################################## PRIVATE
   private
   
   # perform backup
@@ -227,6 +237,6 @@ class Backup
 end
 
 # start backup if arguements have been specified
-# TODO:  if verbose (1st arg = true), gets (in proceed?) creates an exception
-b = Backup.new false, ARGV[1].split(',').collect! {|f| "#{f}"}, 
+puts ARGV[1]
+Backup.new eval(ARGV[0]), ARGV[1].split(',').collect! {|f| "#{f}"}, 
     ARGV[2].split(',').collect! {|f| "#{f}"} if ARGV[2]

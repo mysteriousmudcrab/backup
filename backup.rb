@@ -133,7 +133,7 @@ class Backup
     do_backup "#{rsync} #{args} \'#{class_name}\' \'#{backup_dest}\'", false
     destination = File.join(backup_dest, File.basename(class_name))
     File.stat(destination).size == File.stat(class_name).size and
-        File.stat(destination).mtime < Time.now - 3
+        File.stat(destination).mtime > (Time.now - 3)
   end
 ########################################################### BACKUP FILES/FOLDERS
 # helper methods for the list of files and folders to be backed up
